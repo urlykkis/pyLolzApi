@@ -9,7 +9,7 @@ class BaseLolzAPI:
                  client_id: str = None,
                  client_secret: str = None,
                  scope: list[str] = None,
-                 ) -> BaseLolzAPI:
+                 ):
         """
         https://zelenka.guru/account/api
         :param token: Токен

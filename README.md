@@ -12,3 +12,10 @@
 
 Добавление документации
 
+## Использование:
+```python
+from pylolzapi import LZTApi
+
+api = LZTApi("YOUR_TOKEN")
+print(api.user_info.user_id)
+```

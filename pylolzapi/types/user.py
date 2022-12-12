@@ -81,3 +81,8 @@ class User(BaseModel):
     user_groups: list[Group]
     self_permissions: SelfPermissions
     edit_permissions: EditPermissions
+
+
+__all__ = (
+    "User"
+)
