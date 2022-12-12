@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from . import types
 from . import utils
-from .api.LolzAPI import LZTApi
+from .api.sync import LZTApi
 
 __all__ = (
     'LZTApi',

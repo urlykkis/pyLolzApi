@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import urllib.parse
+from typing import Tuple, List
+
 import requests
 import json
 
@@ -9,6 +11,7 @@ from datetime import datetime
 from .base import BaseLolzAPI
 from pylolzapi.types.user import User
 from pylolzapi.types.payment import Operation
+from pylolzapi.types.items import Item
 from pylolzapi.utils.exceptions import LolzAPIError
 
 
@@ -42,7 +45,7 @@ class LZTApi(BaseLolzAPI):
 
     def _get(self, url: str, params=None) -> dict:
         if params is None:
-            params = {}
+            params = dict()
 
         return self.__request(self._session.get,
                               self._base_url + url,
@@ -50,7 +53,7 @@ class LZTApi(BaseLolzAPI):
 
     def _post(self, url: str, data=None) -> dict:
         if data is None:
-            data = {}
+            data = dict()
 
         return self.__request(self._session.post,
                               self._base_url + url,
@@ -58,14 +61,14 @@ class LZTApi(BaseLolzAPI):
 
     def _delete(self, url: str, data=None) -> dict:
         if data is None:
-            data = {}
+            data = dict()
 
         return self.__request(self._session.delete,
                               self._base_url + url,
                               data=data).json()
 
-    def me(self):
-        """Отображает информацию о вашем профиле"""
+    def me(self) -> User:
+        """Отображает информацию о вашем профиле."""
         return User.parse_obj(self._get("users/me")["user"])
 
     def market_payments(self,
@@ -78,9 +81,10 @@ class LZTApi(BaseLolzAPI):
                         end_date: datetime = None,
                         wallet: str = None,
                         comment: str = None,
-                        is_hold: str = None) -> list[Operation]:
+                        is_hold: str = None
+                        ) -> tuple[list[Operation], dict]:
         """
-        Отображает список ваших платежей
+        Выводит список транзакций на аккаунте.
         :param payment_type: Тип операции. Разрешенные типы операций: income, cost, refilled_balance,
         withdrawal_balance, paid_item, sold_item, money_transfer, receiving_money, internal_purchase, claim_hold
         :param pmin: Минимальная стоимость операции
@@ -119,15 +123,17 @@ class LZTApi(BaseLolzAPI):
 
         resp = self._get(f'market/user/{self.user_info.user_id}/payments', params=data)
 
-        operation_list = [
-            Operation.parse_obj(resp["payments"][operation]) for operation in resp["payments"]
-        ]
-        return operation_list
+        return [Operation.parse_obj(resp["payments"][operation]) for operation in resp["payments"]], resp
 
-    def market_list(self, category: str = None, pmin: int = None, pmax: int = None, title: str = None,
-                    parse_sticky_items: str = None, optional: dict = None):
+    def market_list(self, category: str = None,
+                    pmin: int = None,
+                    pmax: int = None,
+                    title: str = None,
+                    parse_sticky_items: str = None,
+                    optional: dict = None
+                    ) -> tuple[list[Item], dict]:
         """
-        Отображает список последних аккаунтов
+        Получить все последние аккаунты маркета.
         :param category: Категория на маркете
         :param pmin: Минимальная цена для аккаунта
         :param pmax: Максимальная цена для аккаунта
@@ -136,9 +142,9 @@ class LZTApi(BaseLolzAPI):
         :param optional: Получить параметры URL-адреса из market
         :return:
         """
-
         if category:
-            data = {}
+            data = dict()
+
             if title:
                 data['title'] = title
             if pmin:
@@ -149,6 +155,116 @@ class LZTApi(BaseLolzAPI):
                 data['parse_sticky_items'] = parse_sticky_items
             if optional:
                 data = {**data, **optional}
-            return self._get(f'market/{category}', params=data)
+
+            resp = self._get(f'market/{category}', params=data)
         else:
-            return self._get('market')
+            resp = self._get('market')
+
+        return [Item.parse_obj(i) for i in resp["items"]], resp
+
+    def market_fave(self) -> dict:
+        """
+        Получить свои избранные товары
+        :return: dict
+        """
+        return self._get(f'market/fave')
+
+    def market_viewed(self) -> [Item, dict]:
+        """
+        Получить свои просмотренные товары.
+        :return:
+        """
+        resp = self._get(f'market/viewed')
+        return [Item.parse_obj(i) for i in resp["items"]], resp
+
+    def market_item(self, item: int) -> Item:
+        """
+        Показывает информацию об аккаунте на маркете.
+        :param item: Item ID
+        :return:
+        """
+        return Item.parse_obj(self._get(f'market/{item}'))
+
+    def market_reserve(self, item: int, price: int = None) -> dict:
+        """
+        Резервирует аккаунт.
+        :param item: ID аккаунта
+        :param price: Ваша Цена за аккаунт, по умолчанию указанная цена
+        :return:
+        """
+        price = price if price is not None else (self.market_item(item)).price
+        return self._post(f'market/{item}/reserve', data={'price': price})
+
+    def market_cancel_reserve(self, item: int) -> dict:
+        """
+        Отменяет резерв аккаунта.
+        :param item: ID аккаунта
+        :return:
+        """
+        return self._post(f'market/{item}/cancel-reserve')
+
+    def market_check_account(self, item: int) -> dict:
+        """
+        Проверяет аккаунт.
+        :param item: ID аккаунта
+        :return:
+        """
+        return self._post(f'market/{item}/check-account')
+
+    def market_confirm_buy(self, item: int) -> dict:
+        """
+        Подтверждение покупки.
+        :param item: ID аккаунта
+        :return:
+        """
+        return self._post(f'market/{item}/confirm-buy')
+
+    def market_fast_buy(self, item: int) -> dict:
+        """
+        Автоматическая проверка и покупка аккаунта.
+        :param item: ID аккаунта
+        :return:
+        """
+        return self._post(f'market/{item}/fast-buy')
+
+    def market_get_email(self, item: int, email: str):
+        """
+        Получить код подтверждения с почты маркета.
+        :param item: ID аккаунта
+        :param email: Почта аккаунта
+        :return:
+        """
+        return self._get(f'market/{item}/email-code', {'email': email})
+
+    def market_refuse_guarantee(self, item: int) -> dict:
+        """
+        Отказаться от гарантии.
+        :param item: ID Аккаунта
+        :return: dict
+        """
+        return self._post(f'market/{item}/refuse-guarantee')
+
+    def market_change_password(self, item: int) -> dict:
+        """
+        Изменить пароль аккаунта.
+        :param item: ID аккаунта
+        :return:
+        """
+        return self._post(f'market/{item}/change-password')
+
+    def market_delete(self, item: int, reason: str):
+        """
+        Удалить свой аккаунт с маркета.
+        :param item: ID аккаунта
+        :param reason: Причина удаления
+        :return:
+        """
+        return self._delete(f'market/{item}/delete', {'reason': reason})
+
+    def market_bump(self, item: int):
+        """
+        Поднять аккаунт.
+        :param item: ID аккаунта
+        :return:
+        """
+        return self._post(f'market/{item}/bump')
