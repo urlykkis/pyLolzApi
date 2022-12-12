@@ -1,16 +1,14 @@
-from __future__ import annotations
-
 import requests
 import json
 import types
 
 from datetime import datetime
 
-from .base import BaseLolzAPI
+from .base import BaseAPI
 from pylolzapi.utils.exceptions import LolzAPIError
 
 
-class LZTApi(BaseLolzAPI):
+class LZTApi(BaseAPI):
     def __init__(self, token: str = None, client_id: str = None,
                  client_secret: str = None, scope: list[str] = None):
         super(LZTApi, self).__init__(token, client_id, client_secret, scope)
@@ -56,7 +54,6 @@ class LZTApi(BaseLolzAPI):
     def me(self) -> types.User:
         """Отображает информацию о вашем профиле."""
         return types.User.parse_obj(self._get("users/me")["user"])
-
 
     def market_fave(self) -> dict:
         """Получить свои избранные товары."""

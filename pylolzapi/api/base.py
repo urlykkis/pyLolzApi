@@ -1,15 +1,9 @@
-from __future__ import annotations
-
 import urllib.parse
 
 
-class BaseLolzAPI:
-    def __init__(self,
-                 token: str = None,
-                 client_id: str = None,
-                 client_secret: str = None,
-                 scope: list[str] = None,
-                 ):
+class BaseAPI:
+    def __init__(self, token: str = None, client_id: str = None,
+                 client_secret: str = None, scope: list[str] = None):
         """
         https://zelenka.guru/account/api
         :param token: Токен
@@ -41,14 +35,20 @@ class BaseLolzAPI:
 
     @staticmethod
     def transfer(username: str, amount: int = None, comment: str = None, hold: bool = None):
+        """
+        Создает ссылку для перевода денег.
+        :param username: Ник пользователя
+        :param amount:  Сумма
+        :param comment: Комментарий
+        :param hold: Задержать перевод
+        :return:
+        """
         url = f"https://zelenka.guru/market/balance/transfer?username={username}"
 
-        if amount:
-            url += f"&amount={amount}"
+        if amount: url += f"&amount={amount}"
+        if hold is not None:  url += f"&hold={0 if hold is False else 1}"
         if comment:
             comment = urllib.parse.quote(comment)
             url += f"&comment={comment}"
-        if hold is not None:
-            url += f"&hold={0 if hold is False else 1}"
 
         return url
