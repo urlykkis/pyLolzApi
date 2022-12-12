@@ -21,6 +21,7 @@ class LZTApi(BaseLolzAPI):
 
     def __request(self, method, *args, **kwargs) -> requests.Response:
         response = method(*args, **kwargs)
+
         try:
             resp_json = response.json()
         except json.decoder.JSONDecodeError:
@@ -56,65 +57,6 @@ class LZTApi(BaseLolzAPI):
         """Отображает информацию о вашем профиле."""
         return types.User.parse_obj(self._get("users/me")["user"])
 
-    def market_payments(self, payment_type: str = None, pmin: int = None, pmax: int = None, receiver: str = None,
-                        sender: str = None, start_date: datetime = None, end_date: datetime = None, wallet: str = None,
-                        comment: str = None, is_hold: str = None) -> tuple[list[types.Operation], dict]:
-        """
-        Выводит список транзакций на аккаунте.
-        :param payment_type: Тип операции. Разрешенные типы операций: income, cost, refilled_balance,
-        withdrawal_balance, paid_item, sold_item, money_transfer, receiving_money, internal_purchase, claim_hold
-        :param pmin: Минимальная стоимость операции
-        :param pmax: Максимальная стоимость операции
-        :param receiver: Имя пользователя, который получает от вас деньги
-        :param sender: Имя пользователя, который отправил вам деньги
-        :param start_date: Дата начала операции (формат даты RFC 3339)
-        :param end_date: Дата окончания операции (формат даты RFC 3339)
-        :param wallet: Кошелек, который используется для денежных выплат
-        :param comment: Комментарий для денежных переводов
-        :param is_hold: Отображение операций удержания
-        """
-        data = dict()
-
-        if payment_type: data['type'] = payment_type
-        if pmin: data['pmin'] = pmin
-        if pmax: data['pmax'] = pmax
-        if receiver: data['receiver'] = receiver
-        if sender: data['sender'] = sender
-        if start_date: data['startDate'] = start_date
-        if end_date: data['endDate'] = end_date
-        if wallet: data['wallet'] = wallet
-        if comment: data['comment'] = comment
-        if is_hold: data['is_hold'] = is_hold
-
-        resp = self._get(f'market/user/{self.user_info.user_id}/payments', params=data)
-
-        return [types.Operation.parse_obj(resp["payments"][operation]) for operation in resp["payments"]], resp
-
-    def market_list(self, category: str = None, pmin: int = None, pmax: int = None, title: str = None,
-                    parse_sticky_items: str = None, optional: dict = None) -> tuple[list[types.Item], dict]:
-        """
-        Получить все последние аккаунты маркета.
-        :param category: Категория на маркете
-        :param pmin: Минимальная цена для аккаунта
-        :param pmax: Максимальная цена для аккаунта
-        :param title: Название аккаунта
-        :param parse_sticky_items: Условие для разбора параметров
-        :param optional: Получить параметры URL-адреса из market
-        """
-        if category:
-            data = dict()
-
-            if title: data['title'] = title
-            if pmin: data['pmin'] = pmin
-            if pmax: data['pmax'] = pmax
-            if parse_sticky_items: data['parse_sticky_items'] = parse_sticky_items
-            if optional: data = {**data, **optional}
-
-            resp = self._get(f'market/{category}', params=data)
-        else:
-            resp = self._get('market')
-
-        return [types.Item.parse_obj(i) for i in resp["items"]], resp
 
     def market_fave(self) -> dict:
         """Получить свои избранные товары."""
@@ -205,6 +147,66 @@ class LZTApi(BaseLolzAPI):
         :param item: ID аккаунта
         """
         return self._post(f'market/{item}/bump')
+
+    def market_payments(self, payment_type: str = None, pmin: int = None, pmax: int = None, receiver: str = None,
+                        sender: str = None, start_date: datetime = None, end_date: datetime = None, wallet: str = None,
+                        comment: str = None, is_hold: str = None) -> tuple[list[types.Operation], dict]:
+        """
+        Выводит список транзакций на аккаунте.
+        :param payment_type: Тип операции. Разрешенные типы операций: income, cost, refilled_balance,
+        withdrawal_balance, paid_item, sold_item, money_transfer, receiving_money, internal_purchase, claim_hold
+        :param pmin: Минимальная стоимость операции
+        :param pmax: Максимальная стоимость операции
+        :param receiver: Имя пользователя, который получает от вас деньги
+        :param sender: Имя пользователя, который отправил вам деньги
+        :param start_date: Дата начала операции (формат даты RFC 3339)
+        :param end_date: Дата окончания операции (формат даты RFC 3339)
+        :param wallet: Кошелек, который используется для денежных выплат
+        :param comment: Комментарий для денежных переводов
+        :param is_hold: Отображение операций удержания
+        """
+        data = dict()
+
+        if payment_type: data['type'] = payment_type
+        if pmin: data['pmin'] = pmin
+        if pmax: data['pmax'] = pmax
+        if receiver: data['receiver'] = receiver
+        if sender: data['sender'] = sender
+        if start_date: data['startDate'] = start_date
+        if end_date: data['endDate'] = end_date
+        if wallet: data['wallet'] = wallet
+        if comment: data['comment'] = comment
+        if is_hold: data['is_hold'] = is_hold
+
+        resp = self._get(f'market/user/{self.user_info.user_id}/payments', params=data)
+
+        return [types.Operation.parse_obj(resp["payments"][operation]) for operation in resp["payments"]], resp
+
+    def market_list(self, category: str = None, pmin: int = None, pmax: int = None, title: str = None,
+                    parse_sticky_items: str = None, optional: dict = None) -> tuple[list[types.Item], dict]:
+        """
+        Получить все последние аккаунты маркета.
+        :param category: Категория на маркете
+        :param pmin: Минимальная цена для аккаунта
+        :param pmax: Максимальная цена для аккаунта
+        :param title: Название аккаунта
+        :param parse_sticky_items: Условие для разбора параметров
+        :param optional: Получить параметры URL-адреса из market
+        """
+        if category:
+            data = dict()
+
+            if title: data['title'] = title
+            if pmin: data['pmin'] = pmin
+            if pmax: data['pmax'] = pmax
+            if parse_sticky_items: data['parse_sticky_items'] = parse_sticky_items
+            if optional: data = {**data, **optional}
+
+            resp = self._get(f'market/{category}', params=data)
+        else:
+            resp = self._get('market')
+
+        return [types.Item.parse_obj(i) for i in resp["items"]], resp
 
     def market_transfer(self, receiver: int, receiver_username: str, amount: int, secret_answer: str,
                         currency: str = 'rub', comment: str = None, transfer_hold: str = None,
