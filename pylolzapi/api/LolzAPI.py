@@ -7,7 +7,9 @@ import json
 from datetime import datetime
 
 from .base import BaseLolzAPI
-from pylolzapi.misc.exceptions import LolzAPIError
+from pylolzapi.types.user import User
+from pylolzapi.types.payment import Operation
+from pylolzapi.utils.exceptions import LolzAPIError
 
 
 class LZTApi(BaseLolzAPI):
@@ -19,13 +21,9 @@ class LZTApi(BaseLolzAPI):
                  ) -> LZTApi:
         super(LZTApi, self).__init__(token, client_id, client_secret, scope)
         self._session = requests.session()
-        self._session.headers = {"Authorization": f"Bearer {self.token}"}
+        self._session.headers = {"Authorization": f"Bearer {self._token}"}
 
-        me = self.me()
-        self._user_id = me["user"]["user_id"]
-        self._username = me["user"]["username"]
-        self._permalink = me["user"]["links"]["permalink"]
-        self._avatar = me["user"]["links"]["avatar"]
+        self.user_info: User = self.me()
 
     def __request(self, method, *args, **kwargs) -> requests.Response:
         response = method(*args, **kwargs)
@@ -67,7 +65,8 @@ class LZTApi(BaseLolzAPI):
                               data=data).json()
 
     def me(self):
-        return self._get("users/me")
+        """Отображает информацию о вашем профиле"""
+        return User.parse_obj(self._get("users/me")["user"])
 
     def market_payments(self,
                         payment_type: str = None,
@@ -79,31 +78,77 @@ class LZTApi(BaseLolzAPI):
                         end_date: datetime = None,
                         wallet: str = None,
                         comment: str = None,
-                        is_hold: str = None):
+                        is_hold: str = None) -> list[Operation]:
+        """
+        Отображает список ваших платежей
+        :param payment_type: Тип операции. Разрешенные типы операций: income, cost, refilled_balance,
+        withdrawal_balance, paid_item, sold_item, money_transfer, receiving_money, internal_purchase, claim_hold
+        :param pmin: Минимальная стоимость операции
+        :param pmax: Максимальная стоимость операции
+        :param receiver: Имя пользователя, который получает от вас деньги
+        :param sender: Имя пользователя, который отправил вам деньги
+        :param start_date: Дата начала операции (формат даты RFC 3339)
+        :param end_date: Дата окончания операции (формат даты RFC 3339)
+        :param wallet: Кошелек, который используется для денежных выплат
+        :param comment: Комментарий для денежных переводов
+        :param is_hold: Отображение операций удержания
+        :return: dict
+        """
         data = dict()
 
-        if payment_type: data['type'] = payment_type
-        if pmin: data['pmin'] = pmin
-        if pmax: data['pmax'] = pmax
-        if receiver: data['receiver'] = receiver
-        if sender: data['sender'] = sender
-        if start_date: data['startDate'] = start_date
-        if end_date: data['endDate'] = end_date
-        if wallet: data['wallet'] = wallet
-        if comment: data['comment'] = comment
-        if is_hold: data['is_hold'] = is_hold
-
-        return self._post(f'market/user/{self._user_id}/payments', data)
-
-    def transfer(self, amount: int = None, comment: str = None, hold: bool = None):
-        url = f"https://zelenka.guru/market/balance/transfer?username={self._username}"
-
-        if amount:
-            url += f"&amount={amount}"
+        if payment_type:
+            data['type'] = payment_type
+        if pmin:
+            data['pmin'] = pmin
+        if pmax:
+            data['pmax'] = pmax
+        if receiver:
+            data['receiver'] = receiver
+        if sender:
+            data['sender'] = sender
+        if start_date:
+            data['startDate'] = start_date
+        if end_date:
+            data['endDate'] = end_date
+        if wallet:
+            data['wallet'] = wallet
         if comment:
-            comment = urllib.parse.quote(comment)
-            url += f"&comment={comment}"
-        if hold is not None:
-            url += f"&hold={0 if hold is False else 1}"
+            data['comment'] = comment
+        if is_hold:
+            data['is_hold'] = is_hold
 
-        return url
+        resp = self._get(f'market/user/{self.user_info.user_id}/payments', params=data)
+
+        operation_list = [
+            Operation.parse_obj(resp["payments"][operation]) for operation in resp["payments"]
+        ]
+        return operation_list
+
+    def market_list(self, category: str = None, pmin: int = None, pmax: int = None, title: str = None,
+                    parse_sticky_items: str = None, optional: dict = None):
+        """
+        Отображает список последних аккаунтов
+        :param category: Категория на маркете
+        :param pmin: Минимальная цена для аккаунта
+        :param pmax: Максимальная цена для аккаунта
+        :param title: Название аккаунта
+        :param parse_sticky_items: Условие для разбора параметров
+        :param optional: Получить параметры URL-адреса из market
+        :return:
+        """
+
+        if category:
+            data = {}
+            if title:
+                data['title'] = title
+            if pmin:
+                data['pmin'] = pmin
+            if pmax:
+                data['pmax'] = pmax
+            if parse_sticky_items:
+                data['parse_sticky_items'] = parse_sticky_items
+            if optional:
+                data = {**data, **optional}
+            return self._get(f'market/{category}', params=data)
+        else:
+            return self._get('market')

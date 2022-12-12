@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from . import types
+from . import utils
 from .api.LolzAPI import LZTApi
-from .misc import scope, exceptions
 
 __all__ = (
     'LZTApi',
-    'scope',
-    'exceptions'
+    'types',
+    'utils'
 )
 
 __version__ = '0.0.1'
