@@ -1,0 +1,2 @@
+class LolzAPIError(Exception):
+    pass
